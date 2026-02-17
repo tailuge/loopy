@@ -4,16 +4,16 @@ AI-powered CLI assistant using Vercel AI SDK with tool calling capabilities.
 
 ## Features
 
-- Query LLM models from Google Gemini
+- Query LLM models from OpenRouter (300+ models) or Google Gemini
 - Tool calling support (list_dir tool included)
 - Verbose and debug output modes
-- Configurable model and max steps
-- Model listing from provider
+- Configurable provider, model and max steps
+- Model listing from current provider
 
 ## Prerequisites
 
 - Node.js 18+
-- Google Generative AI API key
+- OpenRouter API key (default) or Google Generative AI API key
 
 ## Installation
 
@@ -27,15 +27,19 @@ npm run build
 Create a `.env.local` file in the project root:
 
 ```
-GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=your_openrouter_key_here
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_key_here
 ```
+
+Only one provider key is required. OpenRouter is the default.
 
 Default configuration is in `config/default.json`:
 
 ```json
 {
+  "provider": "openrouter",
   "model": {
-    "name": "gemini-flash-lite-latest"
+    "name": "openai/gpt-4o-mini"
   },
   "tools": {
     "enabled": ["list_dir"]
@@ -64,7 +68,8 @@ Options:
   --help                Show this help message
   --verbose             Show detailed output (token usage, tool calls)
   --debug               Show raw JSON payloads (request body, response body, headers)
-  --model <model_id>    Override model (e.g., gemini-2.5-flash)
+  --model <model_id>    Override model (e.g., openai/gpt-4o-mini, gemini-2.5-flash)
+  --provider <name>     Provider: openrouter (default) or google
   --max-steps <n>       Maximum number of LLM steps (default: 5)
   --list-models         List available models from current provider
 ```
@@ -72,23 +77,24 @@ Options:
 ### Examples
 
 ```bash
-# Basic query
+# Basic query (uses OpenRouter with gpt-4o-mini)
 ./bin/loopy "What is the capital of France?"
+
+# Use Google Gemini instead
+./bin/loopy --provider google "Explain quantum computing"
 
 # Verbose output with token usage
 ./bin/loopy --verbose "Explain quantum computing"
 
-# Debug mode with raw payloads
-./bin/loopy --debug "1+1=?"
+# Use a specific OpenRouter model
+./bin/loopy --model anthropic/claude-3.5-sonnet "Hello"
 
-# Use a specific model
-./bin/loopy --model gemini-2.5-flash "Hello"
-
-# Limit steps for simple queries
-./bin/loopy --max-steps 1 "What is 2+2?"
+# Use a specific Google model
+./bin/loopy --provider google --model gemini-2.5-flash "Hello"
 
 # List available models
 ./bin/loopy --list-models
+./bin/loopy --provider google --list-models
 ```
 
 ## Tool Calling
@@ -110,11 +116,14 @@ With verbose output, you can see tool call details:
 Run the verification script to test model response and tool calling:
 
 ```bash
-# Use default model
+# Use default provider/model (OpenRouter with gpt-4o-mini)
 npm run verify
 
-# Test with a specific model
-npm run verify -- --model gemini-2.5-flash
+# Test with Google Gemini
+npm run verify -- --provider google --model gemini-2.5-flash
+
+# Test with a specific OpenRouter model
+npm run verify -- --model anthropic/claude-3-haiku
 ```
 
 ## Scripts

@@ -4,14 +4,14 @@ Guidance for AI agents working on the loopy codebase.
 
 ## Project Overview
 
-loopy is a CLI assistant that uses the Vercel AI SDK to interact with LLM models (primarily Google Gemini). It supports tool calling and is designed for extensibility.
+loopy is a CLI assistant that uses the Vercel AI SDK to interact with LLM models. It supports multiple providers (OpenRouter and Google Gemini), tool calling, and is designed for extensibility.
 
 ## Key Technologies
 
 - **Runtime**: Node.js 18+ (ESM modules)
 - **Language**: TypeScript
 - **AI SDK**: Vercel AI SDK v6 (`ai` package)
-- **Provider**: Google Generative AI (`@ai-sdk/google`)
+- **Providers**: OpenRouter (`@openrouter/ai-sdk-provider`), Google Generative AI (`@ai-sdk/google`)
 - **Schema Validation**: Zod
 
 ## Architecture
@@ -51,7 +51,7 @@ Register tools in `src/index.ts`:
 
 ```typescript
 const result = await generateText({
-  model: google(modelName),
+  model: provider === 'google' ? google(modelName) : openrouter(modelName),
   prompt: prompt.join(' '),
   tools: { my_tool: myTool },
   stopWhen: stepCountIs(maxSteps),
@@ -74,7 +74,7 @@ Used for single-turn and multi-step interactions:
 
 ```typescript
 const result = await generateText({
-  model: google(modelName),
+  model: provider === 'google' ? google(modelName) : openrouter(modelName),
   prompt: 'User prompt',
   tools: { ... },
   stopWhen: stepCountIs(maxSteps),
@@ -122,21 +122,27 @@ Run with: `npm run verify [-- --model <model_id>]`
 3. Apply flag value where needed
 4. Rebuild: `npm run build`
 
-### Changing Default Model
+### Changing Default Provider/Model
 
 Edit `config/default.json`:
 
 ```json
 {
-  "model": { "name": "gemini-2.5-flash" }
+  "provider": "openrouter",
+  "model": { "name": "openai/gpt-4o-mini" }
 }
 ```
+
+Available providers: `openrouter`, `google`
 
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | Google AI API key |
+| `OPENROUTER_API_KEY` | Yes* | OpenRouter API key (default provider) |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes* | Google AI API key |
+
+*At least one provider key is required. OpenRouter is the default provider.
 
 ## Important Notes
 

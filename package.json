@@ -44,6 +44,7 @@
   ],
   "dependencies": {
     "@ai-sdk/google": "^3.0.29",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
     "ai": "^6.0.86",
     "zod": "^3.24.2"
   },

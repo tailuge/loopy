@@ -1,5 +1,6 @@
 import { generateText, stepCountIs } from 'ai';
 import { google } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -28,6 +29,7 @@ async function loadEnv() {
 }
 
 interface Config {
+  provider?: string;
   model: { name: string };
   tools: { enabled: string[] };
   maxSteps?: number;
@@ -60,6 +62,7 @@ Options:
   --debug               Show raw JSON payloads (request body, response body, headers)
   --model <model_id>    Override model (e.g., gemini-2.5-flash)
   --max-steps <n>       Maximum number of LLM steps (default: 5)
+  --provider <name>     Provider to use: openrouter (default) or google
   --list-models         List available models from current provider
 
 Examples:
@@ -109,8 +112,29 @@ async function listGoogleModels(): Promise<void> {
   }
 }
 
+async function listOpenRouterModels(): Promise<void> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models');
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json() as { data: Array<{ id: string }> };
+    const models = data.data.map(m => m.id).sort();
+    console.log('Available OpenRouter models:\n');
+    models.forEach(m => console.log(`  ${m}`));
+    console.log(`\nTotal: ${models.length} models`);
+  } catch (error) {
+    console.error('Error fetching models:', error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 async function main() {
   await loadEnv();
+  
+  const openrouter = createOpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
   
   const args = process.argv.slice(2);
   
@@ -118,6 +142,7 @@ async function main() {
   let debug = false;
   let modelOverride: string | undefined;
   let maxStepsOverride: number | undefined;
+  let providerOverride: string | undefined;
   let prompt: string[] = [];
   let listModels = false;
   
@@ -141,13 +166,22 @@ async function main() {
         process.exit(1);
       }
       maxStepsOverride = val;
+    } else if (arg === '--provider' || arg === '-p') {
+      providerOverride = args[++i];
     } else if (!arg.startsWith('-')) {
       prompt.push(arg);
     }
   }
   
+  const config = await loadConfig();
+  
   if (listModels) {
-    await listGoogleModels();
+    const provider = providerOverride || config.provider || 'openrouter';
+    if (provider === 'google') {
+      await listGoogleModels();
+    } else {
+      await listOpenRouterModels();
+    }
     process.exit(0);
   }
   
@@ -156,20 +190,25 @@ async function main() {
     process.exit(1);
   }
   
-  const config = await loadConfig();
+  const provider = providerOverride || config.provider || 'openrouter';
   const modelName = modelOverride || config.model.name;
   const maxSteps = maxStepsOverride ?? config.maxSteps ?? 5;
   
   if (verbose || debug) {
-    console.log(`Model: google/${modelName}`);
+    console.log(`Provider: ${provider}`);
+    console.log(`Model: ${provider}/${modelName}`);
     console.log(`Tools: ${config.tools.enabled.join(', ')}`);
     console.log(`Max steps: ${maxSteps}`);
     console.log('---');
   }
   
   try {
+    const model = provider === 'google' 
+      ? google(modelName)
+      : openrouter(modelName);
+
     const result = await generateText({
-      model: google(modelName),
+      model,
       prompt: prompt.join(' '),
       tools: { list_dir: listDir },
       stopWhen: stepCountIs(maxSteps),
