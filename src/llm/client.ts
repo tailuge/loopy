@@ -1,19 +1,17 @@
 import { streamText, generateText, stepCountIs } from 'ai';
+import { google } from '@ai-sdk/google';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { Message, StreamEvent, LLMConfig } from './types.js';
 import { logger } from './logger.js';
 import { listDir } from '../tools/list-dir.js';
 
-// Re-export providers
-export { google } from '@ai-sdk/google';
-export { createOpenRouter } from '@openrouter/ai-sdk-provider';
 export { listDir };
 
-export function createModel(provider: string, modelName: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createModel(provider: string, modelName: string): any {
   if (provider === 'google') {
-    const { google } = require('@ai-sdk/google');
     return google(modelName);
   }
-  const { createOpenRouter } = require('@openrouter/ai-sdk-provider');
   const or = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
   });
