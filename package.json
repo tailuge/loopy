@@ -1,0 +1,54 @@
+{
+  "name": "loopy",
+  "version": "0.0.1",
+  "description": "AI-powered CLI assistant using Vercel AI SDK with tool calling capabilities",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "loopy": "./bin/loopy"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "verify": "node scripts/verify.js",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "llm",
+    "gemini",
+    "vercel-ai-sdk",
+    "assistant",
+    "tool-calling"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "config",
+    "scripts/verify.js"
+  ],
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.29",
+    "ai": "^6.0.86",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3"
+  }
+}
