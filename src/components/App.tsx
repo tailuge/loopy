@@ -24,6 +24,7 @@ export const App: React.FC<AppProps> = ({
   // State
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState('');
+  const [streamingModelId, setStreamingModelId] = useState<string | undefined>();
   const [currentToolCall, setCurrentToolCall] = useState<{ toolName: string; input: unknown } | null>(null);
   const [currentToolResult, setCurrentToolResult] = useState<{ toolName: string; result: unknown } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +100,7 @@ export const App: React.FC<AppProps> = ({
     setMessages(newMessages);
     setIsLoading(true);
     setStreamingText('');
+    setStreamingModelId(undefined);
     setCurrentToolCall(null);
     setCurrentToolResult(null);
 
@@ -124,10 +126,11 @@ export const App: React.FC<AppProps> = ({
         } else if (event.type === 'tool-result') {
           setCurrentToolResult({ toolName: event.toolName, result: event.result });
         } else if (event.type === 'finish') {
-          // Add assistant message to history
+          // Add assistant message to history with modelId
           if (assistantText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: assistantText }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId }]);
           }
+          setStreamingModelId(event.modelId);
           setStreamingText('');
           setCurrentToolCall(null);
           setCurrentToolResult(null);
@@ -158,6 +161,7 @@ export const App: React.FC<AppProps> = ({
         <MessageList
           messages={messages}
           streamingText={streamingText}
+          streamingModelId={streamingModelId}
           currentToolCall={currentToolCall}
           currentToolResult={currentToolResult}
           isLoading={isLoading}

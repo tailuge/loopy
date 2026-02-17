@@ -22,6 +22,8 @@ const roleLabels: Record<Message['role'], string> = {
 export const MessageItem: React.FC<MessageItemProps> = ({ message, showRole = true }) => {
   const color = roleColors[message.role];
   const label = roleLabels[message.role];
+  const modelSuffix = message.role === 'assistant' && message.modelId ? ` (${message.modelId})` : '';
+  const fullLabel = `${label}${modelSuffix}`;
   
   // Split content by newlines for proper rendering
   const lines = message.content.split('\n');
@@ -32,12 +34,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, showRole = tr
         <Box key={index}>
           {index === 0 && showRole && (
             <Text bold color={color}>
-              {label}:{' '}
+              {fullLabel}:{' '}
             </Text>
           )}
           {index > 0 && showRole && (
             <Text>
-              {' '.repeat(label.length + 2)}
+              {' '.repeat(fullLabel.length + 2)}
             </Text>
           )}
           <Text wrap="wrap">{line || ' '}</Text>

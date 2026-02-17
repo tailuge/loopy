@@ -7,6 +7,7 @@ import type { Message, StreamEvent } from '../llm/types.js';
 interface MessageListProps {
   messages: Message[];
   streamingText: string;
+  streamingModelId?: string;
   currentToolCall: { toolName: string; input: unknown } | null;
   currentToolResult: { toolName: string; result: unknown } | null;
   isLoading: boolean;
@@ -15,6 +16,7 @@ interface MessageListProps {
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   streamingText,
+  streamingModelId,
   currentToolCall,
   currentToolResult,
   isLoading,
@@ -53,7 +55,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       {streamingText && (
         <Box flexDirection="column">
           <Box>
-            <Text bold color="green">Assistant: </Text>
+            <Text bold color="green">Assistant{streamingModelId ? ` (${streamingModelId})` : ''}: </Text>
             <Text>{streamingText}</Text>
           </Box>
         </Box>

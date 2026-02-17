@@ -3,6 +3,7 @@ import type { Tool } from 'ai';
 export type Message = {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  modelId?: string;
 };
 
 export type ToolCallEvent = {
@@ -30,6 +31,7 @@ export type StepFinishEvent = {
 export type FinishEvent = {
   type: 'finish';
   finishReason: string;
+  modelId?: string;
   usage?: {
     inputTokens?: number;
     outputTokens?: number;

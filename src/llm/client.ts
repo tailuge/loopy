@@ -31,7 +31,7 @@ export async function* streamChat(
   });
 
   try {
-    const result = streamText({
+    const streamResult = streamText({
       model,
       messages,
       tools: config.tools,
@@ -39,8 +39,9 @@ export async function* streamChat(
     });
 
     let fullText = '';
+    let finishData: { finishReason: string; usage?: { inputTokens?: number; outputTokens?: number } } | null = null;
 
-    for await (const part of result.fullStream) {
+    for await (const part of streamResult.fullStream) {
       if (part.type === 'text-delta') {
         fullText += part.text;
         yield { type: 'text-delta', delta: part.text };
@@ -54,12 +55,7 @@ export async function* streamChat(
         yield { type: 'tool-result', toolName: part.toolName, result: resultData };
       } else if (part.type === 'finish') {
         const finishPart = part as { finishReason: string; totalUsage?: { inputTokens?: number; outputTokens?: number } };
-        logger.info('Stream finished', {
-          finishReason: finishPart.finishReason,
-          usage: finishPart.totalUsage,
-        });
-        yield {
-          type: 'finish',
+        finishData = {
           finishReason: finishPart.finishReason,
           usage: {
             inputTokens: finishPart.totalUsage?.inputTokens,
@@ -67,6 +63,23 @@ export async function* streamChat(
           },
         };
       }
+    }
+
+    const resolved = await streamResult;
+    const modelId = (await resolved.response)?.modelId;
+
+    if (finishData) {
+      logger.info('Stream finished', {
+        finishReason: finishData.finishReason,
+        modelId,
+        usage: finishData.usage,
+      });
+      yield {
+        type: 'finish',
+        finishReason: finishData.finishReason,
+        modelId,
+        usage: finishData.usage,
+      };
     }
   } catch (error) {
     logger.error('Stream error', { error: error instanceof Error ? error.message : String(error) });
