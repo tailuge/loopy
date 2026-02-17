@@ -12,36 +12,13 @@ export const Banner: React.FC<BannerProps> = ({ provider, model }) => {
   
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Box>
-        <Text color="cyan" bold>
-          ╔══════════════════════════════════════════════╗
-        </Text>
-      </Box>
-      <Box>
-        <Text color="cyan" bold>
-          ║{'  '.padEnd(44)}║
-        </Text>
-      </Box>
-      <Box>
-        <Text color="cyan" bold>
-          ║
-        </Text>
-        <Text color="cyan" bold>
-          {'  Loopy - AI CLI Assistant'.padEnd(44)}
-        </Text>
-        <Text color="cyan" bold>
-          ║
-        </Text>
-      </Box>
-      <Box>
-        <Text color="cyan" bold>
-          ║{'  '.padEnd(44)}║
-        </Text>
-      </Box>
-      <Box>
-        <Text color="cyan" bold>
-          ╚══════════════════════════════════════════════╝
-        </Text>
+      <Box flexDirection="column">
+        <Text color="cyan"> _                            </Text>
+        <Text color="cyan">| |    ___   ___  _ __  _   _ </Text>
+        <Text color="cyan">| |   / _ \ / _ \| '_ \| | | |</Text>
+        <Text color="cyan">| |__| (_) | (_) | |_) | |_| |</Text>
+        <Text color="cyan">|_____\___/ \___/| .__/ \__, |</Text>
+        <Text color="cyan">                 |_|    |___/ </Text>
       </Box>
       <Box marginLeft={1}>
         <Text dimColor>Version: {version}</Text>

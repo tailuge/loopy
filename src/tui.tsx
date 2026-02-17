@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'child_process';
 import React from 'react';
-import { render } from 'ink';
+import { withFullScreen } from 'fullscreen-ink';
 import { App } from './components/App.js';
 import { loadEnv, loadConfig } from './config.js';
 import { getVersionSync } from './version.js';
@@ -85,8 +85,10 @@ Keyboard:
     process.exit(0);
   }
 
-  // Render the TUI
-  render(<App initialProvider={provider} initialModel={model} />);
+  // Render the TUI with fullscreen support (alternate screen buffer)
+  withFullScreen(<App initialProvider={provider} initialModel={model} />, {
+    exitOnCtrlC: false,
+  }).start();
 }
 
 main().catch(error => {
