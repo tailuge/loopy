@@ -5,6 +5,7 @@ import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { listDir } from './tools/list-dir.js';
+import { getVersionSync } from './version.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,6 +59,7 @@ Usage:
 
 Options:
   --help                Show this help message
+  --version             Show version
   --verbose             Show detailed output (token usage, tool calls)
   --debug               Show raw JSON payloads (request body, response body, headers)
   --model <model_id>    Override model (e.g., gemini-2.5-flash)
@@ -145,13 +147,16 @@ async function main() {
   let providerOverride: string | undefined;
   let prompt: string[] = [];
   let listModels = false;
+  let showVersion = false;
   
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--help' || arg === '-h') {
       printHelp();
       process.exit(0);
-    } else if (arg === '--verbose' || arg === '-v') {
+    } else if (arg === '--version' || arg === '-v') {
+      showVersion = true;
+    } else if (arg === '--verbose') {
       verbose = true;
     } else if (arg === '--debug' || arg === '-d') {
       debug = true;
@@ -171,6 +176,11 @@ async function main() {
     } else if (!arg.startsWith('-')) {
       prompt.push(arg);
     }
+  }
+  
+  if (showVersion) {
+    console.log(getVersionSync());
+    process.exit(0);
   }
   
   const config = await loadConfig();
