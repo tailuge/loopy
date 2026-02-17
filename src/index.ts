@@ -180,13 +180,30 @@ async function main() {
       stopWhen: stepCountIs(maxSteps),
     });
     
-    logger.info('CLI query', {
+    const toolCalls = result.steps.flatMap(s => s.toolCalls);
+
+    logger.info('CLI response', {
       prompt: prompt.join(' '),
       provider,
       requestedModel: modelName,
       actualModel: result.response?.modelId,
       finishReason: result.finishReason,
       usage: result.usage,
+      responseText: result.text,
+      steps: result.steps.length,
+      toolCalls: toolCalls.map(tc => ({
+        toolName: tc.toolName,
+        input: tc.input,
+        result: 'result' in tc ? tc.result : undefined,
+      })),
+      debug: debug ? {
+        steps: result.steps.map((step, index) => ({
+          stepIndex: index,
+          requestBody: step.request.body,
+          responseHeaders: step.response.headers,
+          responseBody: step.response.body,
+        })),
+      } : undefined,
     });
     
     console.log(result.text);
