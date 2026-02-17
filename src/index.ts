@@ -4,6 +4,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { listDir } from './tools/list-dir.js';
 import { getVersionSync } from './version.js';
 import { loadEnv, loadConfig, type Config } from './config.js';
+import { logger } from './llm/logger.js';
 
 function printHelp() {
   console.log(`
@@ -179,6 +180,15 @@ async function main() {
       stopWhen: stepCountIs(maxSteps),
     });
     
+    logger.info('CLI query', {
+      prompt: prompt.join(' '),
+      provider,
+      requestedModel: modelName,
+      actualModel: result.response?.modelId,
+      finishReason: result.finishReason,
+      usage: result.usage,
+    });
+    
     console.log(result.text);
     
     if (debug) {
@@ -210,6 +220,7 @@ async function main() {
     
     if (verbose) {
       console.log('\n---');
+      console.log(`Model: ${result.response?.modelId ?? modelName}`);
       console.log(`Finish reason: ${result.finishReason}`);
       console.log(`Steps: ${result.steps.length}`);
       
@@ -227,7 +238,9 @@ async function main() {
       }
     }
   } catch (error) {
-    console.error('Error:', error instanceof Error ? error.message : String(error));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('CLI error', { error: errorMessage, prompt: prompt.join(' ') });
+    console.error('Error:', errorMessage);
     process.exit(1);
   }
 }
