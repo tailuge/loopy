@@ -13,16 +13,12 @@ async function main() {
     console.log(`Starting web interface on http://localhost:${port}`);
 
     // Spawn ttyd, telling it to run THIS same script but WITHOUT the --web flag
-    const args = [
-      '-p', port.toString(),
-      '-i', '0.0.0.0', // Listen on all interfaces
-      'env', 'UI_MODE=mobile',
-      'ttyd',
-      'node', process.argv[1],
-      ...process.argv.slice(2).filter(a => a !== '--web'),
-    ];
+    const remainingArgs = process.argv.slice(2).filter(a => a !== '--web').join(' ');
+    const nodePath = process.execPath;
+    const cmd = `UI_MODE=mobile ${nodePath} ${process.argv[1]} ${remainingArgs}`.trim();
+    const ttydCmd = `ttyd -p ${port} -i 0.0.0.0 --writable --once sh -c "${cmd}"`;
 
-    const ttyd = spawn('ttyd', args, { stdio: 'inherit' });
+    const ttyd = spawn('sh', ['-c', ttydCmd], { stdio: 'inherit' });
 
     ttyd.on('exit', (code) => process.exit(code ?? 1));
     return;
