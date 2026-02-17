@@ -1,54 +1,9 @@
 import { generateText, stepCountIs } from 'ai';
 import { google } from '@ai-sdk/google';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { readFile } from 'fs/promises';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { listDir } from './tools/list-dir.js';
 import { getVersionSync } from './version.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const envPath = join(__dirname, '..', '.env.local');
-
-async function loadEnv() {
-  try {
-    const content = await readFile(envPath, 'utf-8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const [key, ...valueParts] = trimmed.split('=');
-        if (key && valueParts.length > 0) {
-          const value = valueParts.join('=').replace(/^["']|["']$/g, '');
-          process.env[key.trim()] = value;
-        }
-      }
-    });
-  } catch {
-    // .env.local doesn't exist, that's ok
-  }
-}
-
-interface Config {
-  provider?: string;
-  model: { name: string };
-  tools: { enabled: string[] };
-  maxSteps?: number;
-}
-
-async function loadConfig(): Promise<Config> {
-  const configPath = join(__dirname, '..', 'config', 'default.json');
-  try {
-    const content = await readFile(configPath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return {
-      model: { name: 'gemini-2.5-flash' },
-      tools: { enabled: ['list_dir'] },
-      maxSteps: 5,
-    };
-  }
-}
+import { loadEnv, loadConfig, type Config } from './config.js';
 
 function printHelp() {
   console.log(`
