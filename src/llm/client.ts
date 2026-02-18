@@ -1,22 +1,10 @@
 import { streamText, generateText, stepCountIs } from 'ai';
-import { google } from '@ai-sdk/google';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createModel } from './factory.js';
 import type { Message, StreamEvent, LLMConfig } from './types.js';
 import { logger } from './logger.js';
 import { listDir } from '../tools/list-dir.js';
 
 export { listDir };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createModel(provider: string, modelName: string): any {
-  if (provider === 'google') {
-    return google(modelName);
-  }
-  const or = createOpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
-  });
-  return or(modelName);
-}
 
 export async function* streamChat(
   messages: Message[],
@@ -87,10 +75,21 @@ export async function* streamChat(
   }
 }
 
+export interface ChatResult {
+  text: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+  finishReason: string;
+  modelId?: string;
+  steps: any[];
+}
+
 export async function chat(
   messages: Message[],
   config: LLMConfig
-): Promise<string> {
+): Promise<ChatResult> {
   const model = createModel(config.provider, config.model);
   
   logger.debug('Starting chat', {
@@ -112,7 +111,16 @@ export async function chat(
       usage: result.usage,
     });
 
-    return result.text;
+    return {
+      text: result.text,
+      usage: {
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+      },
+      finishReason: result.finishReason,
+      modelId: result.response?.modelId,
+      steps: result.steps,
+    };
   } catch (error) {
     logger.error('Chat error', { error: error instanceof Error ? error.message : String(error) });
     throw error;

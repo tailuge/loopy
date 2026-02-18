@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { Banner } from './Banner.js';
 import { MessageList } from './MessageList.js';
 import { InputArea } from './InputArea.js';
 import { LogPanel } from './LogPanel.js';
 import { handleCommand, type CommandContext } from '../commands/index.js';
-import { streamChat, tools } from '../llm/client.js';
+import { tools } from '../llm/client.js';
 import { logger } from '../llm/logger.js';
 import type { Message, LLMConfig } from '../llm/types.js';
 import { loadEnv, loadConfig } from '../config.js';
+import { Agent } from '../llm/agent.js';
 
 interface AppProps {
   initialProvider?: string;
@@ -30,7 +31,7 @@ export const App: React.FC<AppProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [provider, setProvider] = useState(initialProvider || 'openrouter');
-  const [model, setModel] = useState(initialModel || 'openai/gpt-4o-mini');
+  const [model, setModel] = useState(initialModel || 'openrouter/auto');
   const [config, setConfig] = useState<LLMConfig | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   
@@ -53,6 +54,25 @@ export const App: React.FC<AppProps> = ({
     };
     init();
   }, [initialProvider, initialModel]);
+
+  // Agent instance
+  const agent = useMemo(() => {
+    if (!configLoaded || !config) return null;
+    const a = new Agent({
+      provider,
+      model,
+      maxSteps: config.maxSteps,
+      tools: config.tools,
+    });
+    return a;
+  }, [configLoaded]);
+
+  // Update agent config when provider/model changes
+  useEffect(() => {
+    if (agent) {
+      agent.updateConfig({ provider, model });
+    }
+  }, [agent, provider, model]);
 
   // Toggle log panel with backtick
   useInput((input) => {
@@ -113,37 +133,68 @@ export const App: React.FC<AppProps> = ({
 
     logger.info('User message', { content: result.content, provider, model });
 
-    try {
-      let assistantText = '';
-      
-      for await (const event of streamChat(newMessages, currentConfig)) {
-        if (event.type === 'text-delta') {
-          assistantText += event.delta;
-          setStreamingText(assistantText);
-        } else if (event.type === 'tool-call') {
-          setCurrentToolCall({ toolName: event.toolName, input: event.input });
-          setCurrentToolResult(null);
-        } else if (event.type === 'tool-result') {
-          setCurrentToolResult({ toolName: event.toolName, result: event.result });
-        } else if (event.type === 'finish') {
-          // Add assistant message to history with modelId
-          if (assistantText) {
-            setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId }]);
-          }
-          setStreamingModelId(event.modelId);
-          setStreamingText('');
-          setCurrentToolCall(null);
-          setCurrentToolResult(null);
-        }
+    if (!agent) return;
+
+    // Sync agent history with UI history
+    agent.setMessages(messages);
+
+    let assistantText = '';
+
+    const onDelta = (delta: string) => {
+      assistantText += delta;
+      setStreamingText(assistantText);
+    };
+
+    const onToolCall = (name: string, input: unknown) => {
+      setCurrentToolCall({ toolName: name, input });
+      setCurrentToolResult(null);
+    };
+
+    const onToolResult = (name: string, result: unknown) => {
+      setCurrentToolResult({ toolName: name, result });
+    };
+
+    const onFinish = (event: any) => {
+      if (assistantText) {
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId }]);
       }
-    } catch (error) {
+      setStreamingModelId(event.modelId);
+      cleanup();
+    };
+
+    const onError = (error: any) => {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { role: 'system', content: `Error: ${errorMessage}` }]);
-      logger.error('Chat error', { error: errorMessage });
-    } finally {
+      cleanup();
+    };
+
+    const cleanup = () => {
+      agent.off('stream:delta', onDelta);
+      agent.off('tool:call', onToolCall);
+      agent.off('tool:result', onToolResult);
+      agent.off('finish', onFinish);
+      agent.off('error', onError);
       setIsLoading(false);
-    }
-  }, [messages, config, provider, model, showLog, exit]);
+      setStreamingText('');
+      setCurrentToolCall(null);
+      setCurrentToolResult(null);
+    };
+
+    agent.on('stream:delta', onDelta);
+    agent.on('tool:call', onToolCall);
+    agent.on('tool:result', onToolResult);
+    agent.on('finish', onFinish);
+    agent.on('error', onError);
+
+    // We need to bypass the agent's internal history management for now
+    // because App.tsx manages it in React state.
+    // Or better, let's just use agent.send() and let it manage it.
+    // But App.tsx already has the logic to add user message to state.
+
+    // To keep it simple for this step:
+    agent.send(result.content);
+
+  }, [messages, config, provider, model, showLog, exit, agent]);
 
   if (!configLoaded) {
     return (
