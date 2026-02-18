@@ -35,7 +35,7 @@ export function startWebInterface(options: WebOptions): Promise<number> {
   const remainingArgs = process.argv.slice(2).filter(a => a !== '--web' && a !== '--mdns').join(' ');
   const nodePath = process.execPath;
   const cmd = `UI_MODE=mobile ${nodePath} ${process.argv[1]} ${remainingArgs}`.trim();
-  const ttydCmd = `ttyd -p ${PORT} -i 0.0.0.0 --writable --once -I "${htmlPath}" -t fontSize=24 -t titleFixed=loopy sh -c "${cmd}"`;
+  const ttydCmd = `ttyd -p ${PORT} -i 0.0.0.0 --writable -I "${htmlPath}" -t fontSize=10 -t titleFixed=loopy sh -c "${cmd}"`;
 
   const ttyd = spawn('sh', ['-c', ttydCmd], { stdio: ['inherit', 'pipe', 'pipe'] });
 
