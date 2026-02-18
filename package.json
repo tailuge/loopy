@@ -9,6 +9,7 @@
     "loopy-tui": "./bin/loopy-tui"
   },
   "scripts": {
+    "prebuild": "./scripts/set-version.sh",
     "build": "tsc",
     "start": "node dist/index.js",
     "start:tui": "node dist/tui.js",
