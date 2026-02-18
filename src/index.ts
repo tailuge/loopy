@@ -1,10 +1,8 @@
-import { generateText, stepCountIs } from 'ai';
-import { google } from '@ai-sdk/google';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { listDir } from './tools/list-dir.js';
 import { getVersionSync } from './version.js';
-import { loadEnv, loadConfig, type Config } from './config.js';
+import { loadEnv, loadConfig } from './config.js';
 import { logger } from './llm/logger.js';
+import { Agent } from './llm/agent.js';
 
 function printHelp() {
   console.log(`
@@ -90,10 +88,6 @@ async function listOpenRouterModels(): Promise<void> {
 async function main() {
   await loadEnv();
   
-  const openrouter = createOpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
-  });
-  
   const args = process.argv.slice(2);
   
   let verbose = false;
@@ -168,36 +162,42 @@ async function main() {
     console.log('---');
   }
   
-  try {
-    const model = provider === 'google' 
-      ? google(modelName)
-      : openrouter(modelName);
+  const agent = new Agent({
+    provider,
+    model: modelName,
+    maxSteps,
+    tools: { list_dir: listDir },
+  });
 
-    const result = await generateText({
-      model,
-      prompt: prompt.join(' '),
-      tools: { list_dir: listDir },
-      stopWhen: stepCountIs(maxSteps),
+  // Handle verbose output via events
+  if (verbose) {
+    agent.on('tool:call', (name, input) => {
+      console.log(`Tool call: ${name}(${JSON.stringify(input)})`);
     });
-    
-    const toolCalls = result.steps.flatMap(s => s.toolCalls);
+    agent.on('tool:result', (name, result) => {
+      console.log(`Tool result: ${name} -> ${JSON.stringify(result).slice(0, 100)}...`);
+    });
+  }
+
+  try {
+    const result = await agent.sendSync(prompt.join(' '));
 
     logger.info('CLI response', {
       prompt: prompt.join(' '),
       provider,
       requestedModel: modelName,
-      actualModel: result.response?.modelId,
+      actualModel: result.modelId,
       finishReason: result.finishReason,
       usage: result.usage,
       responseText: result.text,
       steps: result.steps.length,
-      toolCalls: toolCalls.map(tc => ({
+      toolCalls: result.steps.flatMap((s: any) => s.toolCalls).map((tc: any) => ({
         toolName: tc.toolName,
         input: tc.input,
         result: 'result' in tc ? tc.result : undefined,
       })),
       debug: debug ? {
-        steps: result.steps.map((step, index) => ({
+        steps: result.steps.map((step: any, index: number) => ({
           stepIndex: index,
           requestBody: step.request.body,
           responseHeaders: step.response.headers,
@@ -205,15 +205,15 @@ async function main() {
         })),
       } : undefined,
     });
-    
+
     console.log(result.text);
-    
+
     if (debug) {
       console.log('\n' + '='.repeat(60));
       console.log('DEBUG: RAW PAYLOADS');
       console.log('='.repeat(60));
       
-      result.steps.forEach((step, index) => {
+      result.steps.forEach((step: any, index: number) => {
         console.log(`\n--- STEP ${index + 1} ---`);
         
         if (step.request.body) {
@@ -237,7 +237,7 @@ async function main() {
     
     if (verbose) {
       console.log('\n---');
-      console.log(`Model: ${result.response?.modelId ?? modelName}`);
+      console.log(`Model: ${result.modelId ?? modelName}`);
       console.log(`Finish reason: ${result.finishReason}`);
       console.log(`Steps: ${result.steps.length}`);
       
@@ -246,10 +246,10 @@ async function main() {
         console.log(`Output tokens: ${result.usage.outputTokens ?? 'N/A'}`);
       }
       
-      const toolCalls = result.steps.flatMap(s => s.toolCalls);
+      const toolCalls = result.steps.flatMap((s: any) => s.toolCalls);
       if (toolCalls.length > 0) {
         console.log(`Tool calls: ${toolCalls.length}`);
-        toolCalls.forEach(tc => {
+        toolCalls.forEach((tc: any) => {
           console.log(`  - ${tc.toolName}: ${JSON.stringify(tc.input)}`);
         });
       }
