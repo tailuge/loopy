@@ -3,6 +3,7 @@ import { getVersionSync } from './version.js';
 import { loadEnv, loadConfig } from './config.js';
 import { logger } from './llm/logger.js';
 import { Agent } from './llm/agent.js';
+import { loadMode } from './modes.js';
 
 function printHelp() {
   console.log(`
@@ -19,6 +20,7 @@ Options:
   --model <model_id>    Override model (e.g., gemini-2.5-flash)
   --max-steps <n>       Maximum number of LLM steps (default: 5)
   --provider <name>     Provider to use: openrouter (default) or google
+  --mode <name>         Set mode (system prompt preset)
   --list-models         List available models from current provider
 
 Examples:
@@ -95,6 +97,7 @@ async function main() {
   let modelOverride: string | undefined;
   let maxStepsOverride: number | undefined;
   let providerOverride: string | undefined;
+  let modeOverride: string | undefined;
   let prompt: string[] = [];
   let listModels = false;
   let showVersion = false;
@@ -123,6 +126,8 @@ async function main() {
       maxStepsOverride = val;
     } else if (arg === '--provider' || arg === '-p') {
       providerOverride = args[++i];
+    } else if (arg === '--mode') {
+      modeOverride = args[++i];
     } else if (!arg.startsWith('-')) {
       prompt.push(arg);
     }
@@ -154,9 +159,12 @@ async function main() {
   const modelName = modelOverride || config.model.name;
   const maxSteps = maxStepsOverride ?? config.maxSteps ?? 5;
   
+  const mode = await loadMode(modeOverride || config.defaultMode || 'default');
+  
   if (verbose || debug) {
     console.log(`Provider: ${provider}`);
     console.log(`Model: ${provider}/${modelName}`);
+    console.log(`Mode: ${mode.name}`);
     console.log(`Tools: ${config.tools.enabled.join(', ')}`);
     console.log(`Max steps: ${maxSteps}`);
     console.log('---');
@@ -166,6 +174,7 @@ async function main() {
     provider,
     model: modelName,
     maxSteps,
+    instructions: mode.content,
     tools: { list_dir: listDir },
   });
 

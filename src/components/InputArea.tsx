@@ -5,21 +5,20 @@ import TextInput from 'ink-text-input';
 interface InputAreaProps {
   onSubmit: (input: string) => void;
   isLoading: boolean;
+  mode: string;
 }
 
-export const InputArea: React.FC<InputAreaProps> = ({ onSubmit, isLoading }) => {
+export const InputArea: React.FC<InputAreaProps> = ({ onSubmit, isLoading, mode }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [savedInput, setSavedInput] = useState('');
 
-  // Handle up/down arrow for history navigation
   useInput((_, key) => {
     if (isLoading) return;
     
     if (key.upArrow) {
       if (historyIndex === -1) {
-        // Save current input before navigating
         setSavedInput(input);
       }
       const newIndex = Math.min(historyIndex + 1, history.length - 1);
@@ -34,7 +33,6 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSubmit, isLoading }) => 
       
       const newIndex = historyIndex - 1;
       if (newIndex === -1) {
-        // Restore saved input
         setHistoryIndex(-1);
         setInput(savedInput);
       } else if (newIndex >= 0) {
@@ -48,12 +46,10 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSubmit, isLoading }) => 
     const trimmed = value.trim();
     if (!trimmed) return;
     
-    // Add to history (avoid duplicates)
     if (history[history.length - 1] !== trimmed) {
       setHistory(prev => [...prev, trimmed]);
     }
     
-    // Reset history navigation
     setHistoryIndex(-1);
     setSavedInput('');
     setInput('');
@@ -63,6 +59,7 @@ export const InputArea: React.FC<InputAreaProps> = ({ onSubmit, isLoading }) => 
 
   return (
     <Box borderStyle="single" borderColor="gray" paddingX={1}>
+      <Text dimColor>[{mode}] </Text>
       <Text dimColor={isLoading}>
         {isLoading ? '⏳' : '>'}
       </Text>

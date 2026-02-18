@@ -10,6 +10,7 @@ import { logger } from '../llm/logger.js';
 import type { Message, LLMConfig } from '../llm/types.js';
 import { loadEnv, loadConfig } from '../config.js';
 import { Agent } from '../llm/agent.js';
+import { listModes, loadMode } from '../modes.js';
 
 interface AppProps {
   initialProvider?: string;
@@ -34,6 +35,8 @@ export const App: React.FC<AppProps> = ({
   const [model, setModel] = useState(initialModel || 'openrouter/auto');
   const [config, setConfig] = useState<LLMConfig | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [mode, setMode] = useState('default');
+  const [modes, setModes] = useState<string[]>([]);
   
   // Load config on mount
   useEffect(() => {
@@ -50,6 +53,15 @@ export const App: React.FC<AppProps> = ({
         maxSteps: cfg.maxSteps ?? 5,
         tools: tools,
       });
+      
+      // Load available modes
+      const availableModes = await listModes();
+      setModes(availableModes);
+      
+      // Load default mode
+      const defaultMode = await loadMode(cfg.defaultMode || 'default');
+      setMode(defaultMode.name);
+      
       setConfigLoaded(true);
     };
     init();
@@ -58,13 +70,12 @@ export const App: React.FC<AppProps> = ({
   // Agent instance
   const agent = useMemo(() => {
     if (!configLoaded || !config) return null;
-    const a = new Agent({
+    return new Agent({
       provider,
       model,
       maxSteps: config.maxSteps,
       tools: config.tools,
     });
-    return a;
   }, [configLoaded]);
 
   // Update agent config when provider/model changes
@@ -74,10 +85,29 @@ export const App: React.FC<AppProps> = ({
     }
   }, [agent, provider, model]);
 
+  // Set agent instructions when mode changes
+  useEffect(() => {
+    const loadModeContent = async () => {
+      if (!agent) return;
+      const modeData = await loadMode(mode);
+      agent.setInstructions(modeData.content);
+    };
+    loadModeContent();
+  }, [agent, mode]);
+
   // Toggle log panel with backtick
   useInput((input) => {
     if (input === '`') {
       setShowLog(prev => !prev);
+    }
+  });
+
+  // TAB to cycle modes
+  useInput((input, key) => {
+    if (key.tab && !isLoading && modes.length > 0) {
+      const currentIndex = modes.indexOf(mode);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      setMode(modes[nextIndex]);
     }
   });
 
@@ -95,6 +125,9 @@ export const App: React.FC<AppProps> = ({
       setModel,
       showLog,
       setShowLog,
+      mode,
+      setMode,
+      modes,
     };
 
     // First check if it's a command
@@ -186,15 +219,9 @@ export const App: React.FC<AppProps> = ({
     agent.on('finish', onFinish);
     agent.on('error', onError);
 
-    // We need to bypass the agent's internal history management for now
-    // because App.tsx manages it in React state.
-    // Or better, let's just use agent.send() and let it manage it.
-    // But App.tsx already has the logic to add user message to state.
-
-    // To keep it simple for this step:
     agent.send(result.content);
 
-  }, [messages, config, provider, model, showLog, exit, agent]);
+  }, [messages, config, provider, model, showLog, exit, agent, mode, modes]);
 
   if (!configLoaded) {
     return (
@@ -221,7 +248,7 @@ export const App: React.FC<AppProps> = ({
       
       <LogPanel visible={showLog} />
       
-      <InputArea onSubmit={handleSubmit} isLoading={isLoading} />
+      <InputArea onSubmit={handleSubmit} isLoading={isLoading} mode={mode} />
     </Box>
   );
 };

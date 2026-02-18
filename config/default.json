@@ -3,6 +3,7 @@
   "model": {
     "name": "openrouter/auto"
   },
+  "defaultMode": "default",
   "tools": {
     "enabled": ["list_dir"]
   },

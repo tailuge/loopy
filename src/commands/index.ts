@@ -10,6 +10,9 @@ export interface CommandContext {
   setModel: (model: string) => void;
   showLog: boolean;
   setShowLog: (show: boolean) => void;
+  mode: string;
+  setMode: (mode: string) => void;
+  modes: string[];
 }
 
 export type CommandResult = 
@@ -27,6 +30,8 @@ Available commands:
   /list-models        List available models from current provider
   /model <name>       Switch to a different model
   /provider <name>    Switch provider (google or openrouter)
+  /mode <name>        Switch mode (system prompt)
+  /modes              List available modes
   /clear              Clear conversation history
   /log                Toggle log panel
 
@@ -34,6 +39,7 @@ Tips:
   - Use ↑/↓ arrows to navigate command history
   - Select text with mouse to copy (terminal handles this)
   - Press \` (backtick) to toggle log panel
+  - Press TAB to cycle through modes
 `;
 
 export const commands: Record<string, CommandHandler> = {
@@ -70,6 +76,24 @@ export const commands: Record<string, CommandHandler> = {
     }
     context.setProvider(newProvider);
     return { type: 'output', content: `Provider switched to: ${newProvider}` };
+  },
+  
+  '/mode': (args, context) => {
+    if (args.length === 0) {
+      return { type: 'output', content: `Current mode: ${context.mode}\nAvailable: ${context.modes.join(', ')}\nUsage: /mode <name>` };
+    }
+    const newMode = args[0].toLowerCase();
+    if (!context.modes.includes(newMode)) {
+      return { type: 'output', content: `Unknown mode: ${newMode}\nAvailable: ${context.modes.join(', ')}` };
+    }
+    context.setMode(newMode);
+    return { type: 'output', content: `Mode switched to: ${newMode}` };
+  },
+  
+  '/modes': (_, context) => {
+    const current = context.mode;
+    const list = context.modes.map(m => m === current ? `* ${m}` : `  ${m}`).join('\n');
+    return { type: 'output', content: `Available modes:\n${list}` };
   },
   
   '/clear': (_, context) => {

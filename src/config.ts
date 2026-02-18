@@ -27,6 +27,7 @@ export async function loadEnv(): Promise<void> {
 export interface Config {
   provider?: string;
   model: { name: string };
+  defaultMode?: string;
   tools: { enabled: string[] };
   maxSteps?: number;
 }
