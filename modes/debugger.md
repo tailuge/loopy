@@ -7,3 +7,8 @@ Debug the following code. Your analysis should include:
 4. **Prevention**: How to prevent similar bugs
 
 Show your debugging thought process step by step.
+
+[[include:_debugging_process]]
+[[include:_implementation_guidelines]]
+[[include:_tool_usage_strategy]]
+[[include:_output_specification]]
