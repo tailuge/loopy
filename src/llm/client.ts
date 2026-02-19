@@ -3,8 +3,12 @@ import { createModel } from './factory.js';
 import type { Message, StreamEvent, LLMConfig } from './types.js';
 import { logger } from './logger.js';
 import { listDir } from '../tools/list-dir.js';
+import { readFileTool } from '../tools/read-file.js';
+import { writeFileTool } from '../tools/write-file.js';
+import { grep } from '../tools/grep.js';
+import { shell } from '../tools/shell.js';
 
-export { listDir };
+export { listDir, readFileTool, writeFileTool, grep, shell };
 
 export async function* streamChat(
   messages: Message[],
@@ -128,4 +132,10 @@ export async function chat(
 }
 
 // Tools - use import and cast
-export const tools: Record<string, unknown> = { list_dir: listDir };
+export const tools: Record<string, unknown> = {
+  list_dir: listDir,
+  read_file: readFileTool,
+  write_file: writeFileTool,
+  grep: grep,
+  shell: shell
+};
