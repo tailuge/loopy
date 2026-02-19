@@ -40,37 +40,45 @@ export async function listModes(): Promise<string[]> {
  */
 async function processIncludes(content: string, modesDir: string, seen = new Set<string>()): Promise<string> {
   const includeRegex = /\[\[include:([^\]]+)\]\]/g;
-  let result = content;
-  let match;
+  const matches = Array.from(content.matchAll(includeRegex));
 
-  // Re-run the regex against the updated result to handle nested/multiple includes
-  // We use a copy of the regex to avoid state issues with lastIndex
-  while ((match = /\[\[include:([^\]]+)\]\]/g.exec(result)) !== null) {
-    const fullTag = match[0];
+  if (matches.length === 0) return content;
+
+  let lastIndex = 0;
+  const parts: string[] = [];
+
+  for (const match of matches) {
+    // Add text before the match
+    parts.push(content.slice(lastIndex, match.index));
+
     const includeName = match[1];
-
     if (seen.has(includeName)) {
-      result = result.replace(fullTag, `[Error: Circular include detected for "${includeName}"]`);
-      continue;
-    }
+      parts.push(`[Error: Circular include detected for "${includeName}"]`);
+    } else {
+      try {
+        const includePath = join(modesDir, `${includeName}.md`);
+        let includeContent = await readFile(includePath, 'utf-8');
 
-    try {
-      const includePath = join(modesDir, `${includeName}.md`);
-      let includeContent = await readFile(includePath, 'utf-8');
+        // Strip the optional "# Mode: <name>" header from included fragments
+        if (includeContent.startsWith('# Mode:')) {
+          const lines = includeContent.split('\n');
+          includeContent = lines.slice(1).join('\n').trim();
+        }
 
-      // Strip the optional "# Mode: <name>" header from included fragments too
-      if (includeContent.startsWith('# Mode:')) {
-        includeContent = includeContent.split('\n').slice(1).join('\n').trim();
+        // Process nested includes
+        const processed = await processIncludes(includeContent, modesDir, new Set([...seen, includeName]));
+        parts.push(processed);
+      } catch {
+        parts.push(`[Error: Could not include mode fragment "${includeName}"]`);
       }
-
-      const processed = await processIncludes(includeContent, modesDir, new Set([...seen, includeName]));
-      result = result.replace(fullTag, processed);
-    } catch {
-      result = result.replace(fullTag, `[Error: Could not include mode fragment "${includeName}"]`);
     }
+
+    lastIndex = (match.index ?? 0) + match[0].length;
   }
 
-  return result;
+  // Add remaining text
+  parts.push(content.slice(lastIndex));
+  return parts.join('');
 }
 
 /**
