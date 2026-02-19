@@ -5,7 +5,7 @@
   },
   "defaultMode": "default",
   "tools": {
-    "enabled": ["list_dir"]
+    "enabled": ["list_dir", "read_file", "write_file", "grep", "shell"]
   },
   "maxSteps": 5
 }
