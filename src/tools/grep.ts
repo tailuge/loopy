@@ -34,12 +34,14 @@ export const grep = tool({
 
     const lines = result.stdout.trim().split('\n');
     const results = lines.map((line: string) => {
-      const parts = line.split(':');
-      if (parts.length >= 3) {
-        const file = parts[0];
-        const lineNumber = parseInt(parts[1], 10);
-        const content = parts.slice(2).join(':').trim();
-        return { file, line: lineNumber, content };
+      // Grep output format is typically filename:linenumber:content
+      // We use a regex to capture the first two parts correctly even if filename has colons
+      // although grep usually prefixes with ./ or similar.
+      // A more robust way is to find the first colon, then the next colon which should be after a number.
+      const match = line.match(/^(.*?):(\d+):(.*)$/);
+      if (match) {
+        const [, file, lineNumber, content] = match;
+        return { file, line: parseInt(lineNumber, 10), content: content.trim() };
       }
       return null;
     }).filter(Boolean);
