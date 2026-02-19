@@ -49,7 +49,7 @@ async function processIncludes(content: string, modesDir: string, seen = new Set
 
   for (const match of matches) {
     // Add text before the match
-    parts.push(content.slice(lastIndex, match.index));
+    parts.push(content.slice(lastIndex, match.index ?? lastIndex));
 
     const includeName = match[1];
     if (seen.has(includeName)) {
