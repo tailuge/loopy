@@ -1,64 +1,49 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { readdir } from 'fs/promises';
-import { createReadStream } from 'fs';
-import { createInterface } from 'readline';
-import { join } from 'path';
+import { execCommand } from './shell.js';
 
 export const grep = tool({
-  description: 'Search for a pattern in files within a directory',
+  description: 'Search for a pattern in files within a directory using the system grep command',
   inputSchema: z.object({
-    pattern: z.string().describe('The regex pattern to search for'),
-    path: z.string().describe('The directory to search in (defaults to current directory)').default('.'),
+    pattern: z.string().describe('The pattern to search for (regex supported)'),
+    path: z.string().describe('The directory to search in').default('.'),
     recursive: z.boolean().describe('Whether to search recursively').default(true),
   }),
   execute: async ({ pattern, path, recursive }) => {
-    try {
-      const regex = new RegExp(pattern);
-      const results: { file: string; line: number; content: string }[] = [];
-      const MAX_RESULTS = 100;
+    // Escape pattern and path for shell
+    const escapedPattern = pattern.replace(/"/g, '\\"');
+    const escapedPath = path.replace(/"/g, '\\"');
 
-      async function search(dir: string) {
-        const entries = await readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (results.length >= MAX_RESULTS) break;
+    // -r: recursive
+    // -n: line number
+    // -I: ignore binary files
+    // -E: extended regex
+    const flags = recursive ? '-rnIE' : '-nIE';
+    const command = `grep ${flags} "${escapedPattern}" "${escapedPath}" | head -n 100`;
 
-          const fullPath = join(dir, entry.name);
-          if (entry.isDirectory()) {
-            if (recursive && entry.name !== '.git' && entry.name !== 'node_modules' && entry.name !== 'dist') {
-              await search(fullPath);
-            }
-          } else {
-            try {
-              const fileStream = createReadStream(fullPath);
-              const rl = createInterface({
-                input: fileStream,
-                crlfDelay: Infinity
-              });
+    const result = await execCommand(command);
 
-              let lineNumber = 0;
-              for await (const line of rl) {
-                lineNumber++;
-                if (regex.test(line)) {
-                  results.push({ file: fullPath, line: lineNumber, content: line.trim() });
-                }
-                if (results.length >= MAX_RESULTS) {
-                  rl.close();
-                  fileStream.destroy();
-                  break;
-                }
-              }
-            } catch (e) {
-              // Skip files that cannot be read or are not text
-            }
-          }
-        }
-      }
-
-      await search(path);
-      return { results };
-    } catch (error) {
-      return { error: `Failed to grep: ${error instanceof Error ? error.message : String(error)}` };
+    // grep returns exit code 1 if no matches are found
+    if ('error' in result && (result as any).code !== 1) {
+      return result;
     }
+
+    if ((result as any).code === 1 || !result.stdout) {
+      return { results: [], message: 'No matches found.' };
+    }
+
+    const lines = result.stdout.trim().split('\n');
+    const results = lines.map((line: string) => {
+      const parts = line.split(':');
+      if (parts.length >= 3) {
+        const file = parts[0];
+        const lineNumber = parseInt(parts[1], 10);
+        const content = parts.slice(2).join(':').trim();
+        return { file, line: lineNumber, content };
+      }
+      return null;
+    }).filter(Boolean);
+
+    return { results };
   },
 });

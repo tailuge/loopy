@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
 import { dirname } from 'path';
 
-export const writeFileTool = tool({
+export const write_file = tool({
   description: 'Write content to a file. This will create the file if it does not exist, and overwrite it if it does.',
   inputSchema: z.object({
     path: z.string().describe('Path to the file to write'),
