@@ -55,7 +55,6 @@ export const LogPanel: React.FC<LogPanelProps> = ({ visible }) => {
   if (!visible) return null;
 
   const visibleLogs = logs.slice(scrollOffset, scrollOffset + 10);
-  const maxScroll = Math.max(0, logs.length - 10);
 
   return (
     <Box 

@@ -1,5 +1,3 @@
-import type { Tool } from 'ai';
-
 export type Message = {
   role: 'user' | 'assistant' | 'system';
   content: string;

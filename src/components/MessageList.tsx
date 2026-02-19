@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text, Static } from 'ink';
 import { MessageItem } from './MessageItem.js';
 import { ToolCallDisplay } from './ToolCallDisplay.js';
-import type { Message, StreamEvent } from '../llm/types.js';
+import type { Message } from '../llm/types.js';
 
 interface MessageListProps {
   messages: Message[];
