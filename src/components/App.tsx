@@ -157,13 +157,6 @@ export const App: React.FC<AppProps> = ({
     setCurrentToolCall(null);
     setCurrentToolResult(null);
 
-    // Update config in case provider/model changed
-    const currentConfig: LLMConfig = {
-      ...config,
-      provider,
-      model,
-    };
-
     logger.info('User message', { content: result.content, provider, model });
 
     if (!agent) return;

@@ -30,12 +30,10 @@ export async function* streamChat(
       stopWhen: stepCountIs(config.maxSteps),
     });
 
-    let fullText = '';
     let finishData: { finishReason: string; usage?: { inputTokens?: number; outputTokens?: number } } | null = null;
 
     for await (const part of streamResult.fullStream) {
       if (part.type === 'text-delta') {
-        fullText += part.text;
         yield { type: 'text-delta', delta: part.text };
       } else if (part.type === 'tool-call') {
         const input = (part as { input?: unknown }).input;

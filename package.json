@@ -17,6 +17,8 @@
     "test": "node --test dist/**/*.test.js",
     "test:tui": "vitest run",
     "verify": "node scripts/verify.js",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -68,6 +70,7 @@
     "@types/react-dom": "^19.2.3",
     "happy-dom": "^20.6.3",
     "ink-testing-library": "^4.0.0",
+    "oxlint": "^1.49.0",
     "react-dom": "^19.2.4",
     "typescript": "^5.7.3",
     "vitest": "^4.0.18"

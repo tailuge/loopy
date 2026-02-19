@@ -2,7 +2,7 @@
 import React from 'react';
 import { withFullScreen } from 'fullscreen-ink';
 import { App } from './components/App.js';
-import { loadEnv, loadConfig } from './config.js';
+import { loadEnv } from './config.js';
 import { getVersionSync } from './version.js';
 import { startWebInterface } from './web.js';
 
@@ -16,7 +16,6 @@ async function main() {
   }
 
   await loadEnv();
-  const config = await loadConfig();
 
   // Parse command line args
   const args = process.argv.slice(2);
