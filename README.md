@@ -1,5 +1,7 @@
 # loopy
 
+[![CI](https://github.com/tailuge/loopy/actions/workflows/ci.yml/badge.svg)](https://github.com/tailuge/loopy/actions/workflows/ci.yml)
+
 AI-powered CLI assistant using Vercel AI SDK with tool calling capabilities. Includes both a traditional CLI and an interactive TUI.
 
 ## Interface

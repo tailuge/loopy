@@ -1,52 +1,52 @@
-import test from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { Agent } from './agent.js';
 import { EventEmitter } from 'events';
 
-test('Agent class should extend EventEmitter', () => {
-  const agent = new Agent({ provider: 'google', model: 'test' });
-  assert.strictEqual(agent instanceof EventEmitter, true);
-});
-
-test('Agent should manage history correctly', () => {
-  const agent = new Agent({
-    provider: 'google',
-    model: 'test',
-    instructions: 'Be a helpful assistant'
+describe('Agent', () => {
+  it('class should extend EventEmitter', () => {
+    const agent = new Agent({ provider: 'google', model: 'test' });
+    expect(agent instanceof EventEmitter).toBe(true);
   });
 
-  const messages = agent.getMessages();
-  assert.strictEqual(messages.length, 1);
-  assert.strictEqual(messages[0].role, 'system');
-  assert.strictEqual(messages[0].content, 'Be a helpful assistant');
+  it('should manage history correctly', () => {
+    const agent = new Agent({
+      provider: 'google',
+      model: 'test',
+      instructions: 'Be a helpful assistant'
+    });
 
-  agent.clearHistory();
-  assert.strictEqual(agent.getMessages().length, 1);
-  assert.strictEqual(agent.getMessages()[0].role, 'system');
-});
+    const messages = agent.getMessages();
+    expect(messages.length).toBe(1);
+    expect(messages[0].role).toBe('system');
+    expect(messages[0].content).toBe('Be a helpful assistant');
 
-test('Agent should allow adding tools', () => {
-  const agent = new Agent({ provider: 'google', model: 'test' });
-  let toolAdded = false;
-  agent.on('tool:added', (name) => {
-    if (name === 'my-tool') toolAdded = true;
+    agent.clearHistory();
+    expect(agent.getMessages().length).toBe(1);
+    expect(agent.getMessages()[0].role).toBe('system');
   });
 
-  agent.addTool('my-tool', { execute: async () => {} });
-  assert.strictEqual(toolAdded, true);
-});
+  it('should allow adding tools', () => {
+    const agent = new Agent({ provider: 'google', model: 'test' });
+    let toolAdded = false;
+    agent.on('tool:added', (name) => {
+      if (name === 'my-tool') toolAdded = true;
+    });
 
-test('Agent should update config', () => {
-  const agent = new Agent({ provider: 'google', model: 'test' });
-  agent.updateConfig({ model: 'new-model' });
-  // Internal config is private, but we can verify it doesn't crash
-  assert.ok(true);
-});
+    agent.addTool('my-tool', { execute: async () => {} });
+    expect(toolAdded).toBe(true);
+  });
 
-test('Agent should allow setting messages', () => {
-  const agent = new Agent({ provider: 'google', model: 'test' });
-  const messages: any[] = [{ role: 'user', content: 'hello' }];
-  agent.setMessages(messages);
-  assert.strictEqual(agent.getMessages().length, 1);
-  assert.strictEqual(agent.getMessages()[0].content, 'hello');
+  it('should update config', () => {
+    const agent = new Agent({ provider: 'google', model: 'test' });
+    agent.updateConfig({ model: 'new-model' });
+    expect(true).toBe(true);
+  });
+
+  it('should allow setting messages', () => {
+    const agent = new Agent({ provider: 'google', model: 'test' });
+    const messages: any[] = [{ role: 'user', content: 'hello' }];
+    agent.setMessages(messages);
+    expect(agent.getMessages().length).toBe(1);
+    expect(agent.getMessages()[0].content).toBe('hello');
+  });
 });

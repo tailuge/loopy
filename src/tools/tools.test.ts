@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { read_file } from './read-file.js';
 import { write_file } from './write-file.js';
 import { grep } from './grep.js';
@@ -7,52 +6,61 @@ import { shell } from './shell.js';
 import { rm, mkdir } from 'fs/promises';
 import { join } from 'path';
 
-test('read_file and write_file tools', async (t) => {
+describe('read_file and write_file tools', () => {
   const testDir = './test-output';
-  await mkdir(testDir, { recursive: true });
   const testFile = join(testDir, 'test.txt');
   const content = 'hello world';
 
-  await t.test('write_file should write a file', async () => {
+  beforeEach(async () => {
+    await mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  it('write_file should write a file', async () => {
     const result = await write_file.execute!({ path: testFile, content }, {} as any);
-    assert.deepStrictEqual(result, { success: true });
+    expect(result).toEqual({ success: true });
   });
 
-  await t.test('read_file should read a file', async () => {
+  it('read_file should read a file', async () => {
+    await write_file.execute!({ path: testFile, content }, {} as any);
     const result = await read_file.execute!({ path: testFile }, {} as any);
-    assert.deepStrictEqual(result, { content });
+    expect(result).toEqual({ content });
   });
-
-  // Cleanup
-  await rm(testDir, { recursive: true, force: true });
 });
 
-test('grep tool', async (t) => {
+describe('grep tool', () => {
   const testDir = './test-grep';
-  await mkdir(testDir, { recursive: true });
-  await write_file.execute!({ path: join(testDir, 'file1.txt'), content: 'apple\nbanana' }, {} as any);
-  await write_file.execute!({ path: join(testDir, 'file2.txt'), content: 'banana\ncherry' }, {} as any);
 
-  await t.test('grep should find matches', async () => {
+  beforeEach(async () => {
+    await mkdir(testDir, { recursive: true });
+    await write_file.execute!({ path: join(testDir, 'file1.txt'), content: 'apple\nbanana' }, {} as any);
+    await write_file.execute!({ path: join(testDir, 'file2.txt'), content: 'banana\ncherry' }, {} as any);
+  });
+
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
+
+  it('grep should find matches', async () => {
     const result: any = await grep.execute!({ pattern: 'banana', path: testDir, recursive: true }, {} as any);
-    assert.strictEqual(result.results.length, 2);
-    assert.ok(result.results.some((r: any) => r.file.includes('file1.txt')));
-    assert.ok(result.results.some((r: any) => r.file.includes('file2.txt')));
+    expect(result.results.length).toBe(2);
+    expect(result.results.some((r: any) => r.file.includes('file1.txt'))).toBe(true);
+    expect(result.results.some((r: any) => r.file.includes('file2.txt'))).toBe(true);
   });
 
-  await t.test('grep should respect pattern', async () => {
+  it('grep should respect pattern', async () => {
     const result: any = await grep.execute!({ pattern: 'apple', path: testDir, recursive: true }, {} as any);
-    assert.strictEqual(result.results.length, 1);
-    assert.ok(result.results[0].file.includes('file1.txt'));
+    expect(result.results.length).toBe(1);
+    expect(result.results[0].file.includes('file1.txt')).toBe(true);
   });
-
-  // Cleanup
-  await rm(testDir, { recursive: true, force: true });
 });
 
-test('shell tool', async (t) => {
-  await t.test('shell should execute echo', async () => {
+describe('shell tool', () => {
+  it('shell should execute echo', async () => {
     const result: any = await shell.execute!({ command: 'echo "hello"' }, {} as any);
-    assert.strictEqual(result.stdout.trim(), 'hello');
+    expect(result.stdout.trim()).toBe('hello');
   });
 });

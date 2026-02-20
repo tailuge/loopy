@@ -7,9 +7,9 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      '**/*.test.ts',
     ],
     include: [
+      '**/*.test.ts',
       '**/*.test.tsx',
     ],
   },
