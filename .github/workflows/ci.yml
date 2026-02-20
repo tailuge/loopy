@@ -25,6 +25,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prebuild
+        run: npm run prebuild
+
       - name: Typecheck
         run: npm run typecheck
 
