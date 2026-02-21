@@ -36,15 +36,22 @@ src/
 ├── tui.tsx            # TUI entry
 ├── version.ts         # Git-based versioning
 ├── config.ts          # Config loader
+├── modes.ts           # Mode loading with system info generation
 ├── llm/
-│   ├── client.ts      # Streaming LLM client (streamChat, chat, createModel)
+│   ├── client.ts      # Streaming LLM client + tool registration
+│   ├── agent.ts       # Agent class with conversation history
 │   ├── types.ts       # Message, StreamEvent, LLMConfig types
 │   └── logger.ts      # File logging to ~/.loopy/logs/
 ├── commands/
 │   ├── index.ts       # Command handlers for TUI
 │   └── list-models.ts # Model listing functions
 ├── tools/
-│   └── list-dir.ts    # list_dir tool
+│   ├── list-dir.ts    # list_dir tool
+│   ├── read-file.ts   # read_file tool (with line numbers)
+│   ├── write-file.ts  # write_file tool
+│   ├── apply-diff.ts  # apply_diff tool (SEARCH/REPLACE blocks)
+│   ├── grep.ts        # grep tool
+│   └── shell.ts       # shell tool
 └── components/        # Ink components for TUI
     ├── App.tsx        # Main layout
     ├── Banner.tsx     # Startup banner
@@ -60,6 +67,76 @@ src/
 1. Load `.env.local` for API credentials
 2. Load `config/default.json` for model/tools/maxSteps settings
 3. CLI flags override config values
+4. Mode file loaded with system info generated at runtime
+
+## Modes
+
+Loopy supports two modes, each with specific tool access:
+
+| Mode | Description | Tools |
+|------|-------------|-------|
+| `code` | Full coding assistant | list_dir, read_file, write_file, apply_diff, grep, shell |
+| `plan` | Read-only planning mode | list_dir, read_file, grep |
+
+Mode files are in `modes/` directory:
+- `code.md` - Main coding mode
+- `plan.md` - Read-only planning mode
+- `_rules.md` - Shared behavioral rules
+- `_objective.md` - Task methodology
+- `_system_info.md` - Generated at runtime (OS, shell, cwd, homedir)
+
+### Mode Loading
+
+```typescript
+import { loadMode, getToolsForMode } from './modes.js';
+
+const mode = await loadMode('code');  // Generates _system_info.md
+// mode.name = 'code'
+// mode.content = full system prompt with includes resolved
+// mode.tools = ['list_dir', 'read_file', 'write_file', 'apply_diff', 'grep', 'shell']
+```
+
+### System Info Generation
+
+When a mode is loaded, `_system_info.md` is generated with:
+- Operating System
+- Default Shell
+- Current Working Directory
+- Home Directory
+
+## Tools
+
+### read_file
+
+Returns file content with line numbers prepended (format: `  1 | content`):
+
+```
+1 | first line
+2 | second line
+3 | third line
+```
+
+Use the line numbers with `apply_diff` for surgical edits.
+
+### apply_diff
+
+Applies SEARCH/REPLACE blocks with line numbers:
+
+```
+<<<<<<< SEARCH
+:start_line:123
+-------
+[exact content to find]
+=======
+[new content to replace with]
+>>>>>>> REPLACE
+```
+
+The `:start_line:` must match the line number from `read_file` output.
+
+### write_file
+
+Creates new files or completely rewrites existing files. For surgical edits, prefer `apply_diff`.
 
 ## LLM Module
 
@@ -94,6 +171,11 @@ async function chat(messages: Message[], config: LLMConfig): Promise<string>
 
 // Model factory
 function createModel(provider: string, modelName: string)
+
+// Available tools
+export const tools: Record<string, unknown> = {
+  list_dir, read_file, write_file, apply_diff, grep, shell
+};
 ```
 
 ### Streaming Pattern
@@ -118,7 +200,8 @@ Commands are defined in `src/commands/index.ts`:
 export const commands: Record<string, CommandHandler> = {
   '/exit': () => ({ type: 'exit' }),
   '/model': (args, context) => { /* ... */ },
-  // ...
+  '/mode': (args, context) => { /* ... */ },
+  '/modes': (_, context) => { /* ... */ },
 };
 
 export async function handleCommand(input: string, context: CommandContext): Promise<CommandResult>
@@ -129,27 +212,6 @@ CommandResult types:
 - `{ type: 'exit' }` - Exit the TUI
 - `{ type: 'message'; content: string }` - Send as user message to LLM
 - `{ type: 'output'; content: string }` - Display output to user
-
-## Tool System
-
-Tools use the AI SDK's `tool()` function:
-
-```typescript
-import { tool } from 'ai';
-import { z } from 'zod';
-
-export const myTool = tool({
-  description: 'Tool description',
-  inputSchema: z.object({
-    param: z.string().describe('Parameter description'),
-  }),
-  execute: async ({ param }) => {
-    return result;
-  },
-});
-```
-
-Register in `src/llm/client.ts` and add to `config/default.json` tools.enabled.
 
 ## Version System
 
@@ -197,7 +259,14 @@ Run: `npm run verify [-- --model <model_id>]`
 2. Implement using `tool()` with Zod schema
 3. Import and add to tools object in `src/llm/client.ts`
 4. Add tool name to `config/default.json` tools.enabled
-5. Rebuild: `npm run build`
+5. Update `MODE_TOOLS` in `src/modes.ts` if tool should be mode-specific
+6. Rebuild: `npm run build`
+
+### Adding a New Mode
+
+1. Create `modes/<mode-name>.md` with role definition and includes
+2. Add mode to `MODE_TOOLS` in `src/modes.ts` with allowed tools
+3. Rebuild: `npm run build`
 
 ### Adding a New CLI Flag
 
@@ -219,7 +288,8 @@ Edit `config/default.json`:
 ```json
 {
   "provider": "openrouter",
-  "model": { "name": "openai/gpt-4o-mini" }
+  "model": { "name": "openai/gpt-4o-mini" },
+  "defaultMode": "code"
 }
 ```
 
@@ -240,3 +310,4 @@ Available providers: `openrouter`, `google`
 - Build before testing: `npm run build`
 - Ink components use React hooks (`useState`, `useEffect`, etc.)
 - TUI uses `<Static>` for message history (better performance)
+- Mode-specific tools are filtered by `MODE_TOOLS` in `src/modes.ts`

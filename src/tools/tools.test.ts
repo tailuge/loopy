@@ -24,10 +24,26 @@ describe('read_file and write_file tools', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('read_file should read a file', async () => {
+  it('read_file should read a file with line numbers', async () => {
     await write_file.execute!({ path: testFile, content }, {} as any);
     const result = await read_file.execute!({ path: testFile }, {} as any);
-    expect(result).toEqual({ content });
+    // read_file now prepends line numbers
+    expect(result).toEqual({ content: '1 | hello world\n' });
+  });
+
+  it('read_file should handle multi-line files', async () => {
+    const multiLineContent = 'line one\nline two\nline three';
+    await write_file.execute!({ path: testFile, content: multiLineContent }, {} as any);
+    const result = await read_file.execute!({ path: testFile }, {} as any);
+    expect(result).toEqual({ 
+      content: '1 | line one\n2 | line two\n3 | line three\n' 
+    });
+  });
+
+  it('read_file should handle empty files', async () => {
+    await write_file.execute!({ path: testFile, content: '' }, {} as any);
+    const result = await read_file.execute!({ path: testFile }, {} as any);
+    expect(result).toEqual({ content: '' });
   });
 });
 

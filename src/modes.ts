@@ -1,11 +1,23 @@
-import { readdir, readFile } from 'fs/promises';
+import { readdir, readFile, writeFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 
 export interface Mode {
   name: string;
   content: string;
+  tools: string[];  // Tools enabled for this mode
 }
+
+/**
+ * Tools available for each mode.
+ * code: full access to all tools
+ * plan: read-only access (no write_file, apply_diff, or shell)
+ */
+export const MODE_TOOLS: Record<string, string[]> = {
+  code: ['list_dir', 'read_file', 'write_file', 'apply_diff', 'grep', 'shell'],
+  plan: ['list_dir', 'read_file', 'grep'],  // Read-only mode
+};
 
 // Get the project root directory (where modes/ folder lives)
 function getProjectRoot(): string {
@@ -16,6 +28,21 @@ function getProjectRoot(): string {
 
 // Built-in default mode content (fallback when file is missing)
 const BUILTIN_DEFAULT = `You are a helpful AI assistant. Be concise and clear in your responses.`;
+
+/**
+ * Generate the _system_info.md file with current runtime context.
+ * This file is included by modes via [[include:_system_info]]
+ */
+async function generateSystemInfo(cwd: string, modesDir: string): Promise<void> {
+  const content = `## System Information
+
+Operating System: ${process.platform}
+Default Shell: ${process.env.SHELL || 'unknown'}
+Current Working Directory: ${cwd}
+Home Directory: ${homedir()}`;
+  
+  await writeFile(join(modesDir, '_system_info.md'), content, 'utf-8');
+}
 
 /**
  * List all available mode names from the modes/ directory.
@@ -30,8 +57,8 @@ export async function listModes(): Promise<string[]> {
       .map(f => f.replace('.md', ''))
       .sort();
   } catch {
-    // If modes directory doesn't exist, return only default
-    return ['default'];
+    // If modes directory doesn't exist, return only code
+    return ['code'];
   }
 }
 
@@ -83,11 +110,16 @@ async function processIncludes(content: string, modesDir: string, seen = new Set
 
 /**
  * Load a mode by name from the modes/ directory.
+ * Generates system info file before processing includes.
  * Falls back to built-in default if the mode file doesn't exist.
  */
-export async function loadMode(name: string): Promise<Mode> {
+export async function loadMode(name: string, cwd: string = process.cwd()): Promise<Mode> {
   try {
     const modesDir = join(getProjectRoot(), 'modes');
+    
+    // Generate system info before processing includes
+    await generateSystemInfo(cwd, modesDir);
+    
     const filePath = join(modesDir, `${name}.md`);
     let content = await readFile(filePath, 'utf-8');
     
@@ -107,24 +139,33 @@ export async function loadMode(name: string): Promise<Mode> {
     
     return {
       name,
-      content: lines.slice(startIndex).join('\n').trim()
+      content: lines.slice(startIndex).join('\n').trim(),
+      tools: MODE_TOOLS[name] ?? MODE_TOOLS.code,
     };
   } catch {
     // Fall back to built-in default
     return {
-      name: 'default',
-      content: BUILTIN_DEFAULT
+      name: 'code',
+      content: BUILTIN_DEFAULT,
+      tools: MODE_TOOLS.code,
     };
   }
 }
 
 /**
+ * Get tools enabled for a specific mode.
+ */
+export function getToolsForMode(modeName: string): string[] {
+  return MODE_TOOLS[modeName] ?? MODE_TOOLS.code;
+}
+
+/**
  * Get a mode by name, returns null if not found.
  */
-export async function getMode(name: string): Promise<Mode | null> {
+export async function getMode(name: string, cwd: string = process.cwd()): Promise<Mode | null> {
   const modes = await listModes();
   if (!modes.includes(name)) {
     return null;
   }
-  return loadMode(name);
+  return loadMode(name, cwd);
 }

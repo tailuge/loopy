@@ -7,8 +7,9 @@ import { read_file } from '../tools/read-file.js';
 import { write_file } from '../tools/write-file.js';
 import { grep } from '../tools/grep.js';
 import { shell } from '../tools/shell.js';
+import { applyDiff } from '../tools/apply-diff.js';
 
-export { listDir, read_file, write_file, grep, shell };
+export { listDir, read_file, write_file, grep, shell, applyDiff };
 
 export async function* streamChat(
   messages: Message[],
@@ -134,6 +135,7 @@ export const tools: Record<string, unknown> = {
   list_dir: listDir,
   read_file: read_file,
   write_file: write_file,
+  apply_diff: applyDiff,
   grep: grep,
   shell: shell
 };

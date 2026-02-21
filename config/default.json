@@ -3,9 +3,9 @@
   "model": {
     "name": "openrouter/auto"
   },
-  "defaultMode": "default",
+  "defaultMode": "code",
   "tools": {
-    "enabled": ["list_dir", "read_file", "write_file", "grep", "shell"]
+    "enabled": ["list_dir", "read_file", "write_file", "apply_diff", "grep", "shell"]
   },
   "maxSteps": 5
 }

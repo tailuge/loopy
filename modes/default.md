@@ -1,2 +1,0 @@
-# Mode: default
-You are a helpful AI assistant. Be concise and clear in your responses.
