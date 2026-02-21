@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { streamChat, chat } from './client.js';
-import type { Message, LLMConfig, ToolsRecord } from './types.js';
+import type { Message, LLMConfig, ToolsRecord, StepContent, ToolCallRecord } from './types.js';
 import { logger } from './logger.js';
 
 export interface AgentOptions {
@@ -56,27 +56,57 @@ export class Agent extends EventEmitter {
     try {
       let assistantText = '';
       let modelId: string | undefined;
+      let currentStepNumber = 0;
+      let currentStepText = '';
+      let currentToolCalls: ToolCallRecord[] = [];
+      let pendingToolName: string | undefined;
+      let pendingToolInput: unknown;
 
       for await (const event of streamChat(this.messages, this.config)) {
         switch (event.type) {
           case 'text-delta':
             assistantText += event.delta;
+            currentStepText += event.delta;
             this.emit('stream:delta', event.delta);
             break;
           case 'tool-call':
+            pendingToolName = event.toolName;
+            pendingToolInput = event.input;
             this.emit('tool:call', event.toolName, event.input);
             break;
           case 'tool-result':
+            if (pendingToolName) {
+              currentToolCalls.push({
+                toolName: pendingToolName,
+                input: pendingToolInput,
+                result: event.result,
+              });
+              pendingToolName = undefined;
+              pendingToolInput = undefined;
+            }
             this.emit('tool:result', event.toolName, event.result);
+            break;
+          case 'step-finish':
+            if (currentStepText || currentToolCalls.length > 0) {
+              const stepContent: StepContent = {
+                text: currentStepText,
+                toolCalls: currentToolCalls,
+              };
+              this.emit('step:content', currentStepNumber, stepContent);
+              currentStepNumber++;
+              currentStepText = '';
+              currentToolCalls = [];
+            }
+            break;
+          case 'step-content':
             break;
           case 'finish':
             modelId = event.modelId;
-            const assistantMessage: Message = { role: 'assistant', content: assistantText, modelId };
+            const steps: StepContent[] = [];
+            const assistantMessage: Message = { role: 'assistant', content: assistantText, modelId, steps };
             this.messages.push(assistantMessage);
             this.emit('message:assistant', assistantMessage);
             this.emit('finish', event);
-            break;
-          case 'step-finish':
             break;
         }
       }

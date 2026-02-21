@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Text, Static } from 'ink';
 import { MessageItem } from './MessageItem.js';
 import { ToolCallDisplay } from './ToolCallDisplay.js';
-import type { Message } from '../llm/types.js';
+import type { Message, StepContent } from '../llm/types.js';
 
 interface MessageListProps {
   messages: Message[];
@@ -11,6 +11,8 @@ interface MessageListProps {
   currentToolCall: { toolName: string; input: unknown } | null;
   currentToolResult: { toolName: string; result: unknown } | null;
   isLoading: boolean;
+  scrollOffset: number;
+  stepHistory: StepContent[];
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -20,14 +22,14 @@ export const MessageList: React.FC<MessageListProps> = ({
   currentToolCall,
   currentToolResult,
   isLoading,
+  scrollOffset,
+  stepHistory,
 }) => {
-  // Static messages (history that won't change)
   const staticMessages = messages.slice(0, -1);
   const lastMessage = messages[messages.length - 1];
   
   return (
     <Box flexDirection="column" flexGrow={1}>
-      {/* Static history for better performance */}
       {staticMessages.length > 0 && (
         <Static items={staticMessages}>
           {(message, index) => (
@@ -36,12 +38,31 @@ export const MessageList: React.FC<MessageListProps> = ({
         </Static>
       )}
       
-      {/* Last committed message */}
       {lastMessage && (
         <MessageItem message={lastMessage} />
       )}
       
-      {/* Current tool call being executed */}
+      {stepHistory.map((step, stepIndex) => (
+        <Box key={stepIndex} flexDirection="column" marginBottom={1}>
+          {step.toolCalls.map((tc, tcIndex) => (
+            <ToolCallDisplay
+              key={tcIndex}
+              toolName={tc.toolName}
+              input={tc.input}
+              result={tc.result}
+              isComplete={tc.result !== undefined}
+              compact={true}
+            />
+          ))}
+          {step.text && (
+            <Box>
+              <Text dimColor color="green">Step {stepIndex + 1}: </Text>
+              <Text dimColor>{step.text.substring(0, 100)}{step.text.length > 100 ? '...' : ''}</Text>
+            </Box>
+          )}
+        </Box>
+      ))}
+      
       {currentToolCall && (
         <ToolCallDisplay
           toolName={currentToolCall.toolName}
@@ -51,7 +72,6 @@ export const MessageList: React.FC<MessageListProps> = ({
         />
       )}
       
-      {/* Streaming text */}
       {streamingText && (
         <Box flexDirection="column">
           <Box>
@@ -61,10 +81,15 @@ export const MessageList: React.FC<MessageListProps> = ({
         </Box>
       )}
       
-      {/* Loading indicator when no streaming text yet */}
       {isLoading && !streamingText && !currentToolCall && (
         <Box>
           <Text dimColor>Thinking...</Text>
+        </Box>
+      )}
+      
+      {scrollOffset > 0 && (
+        <Box>
+          <Text dimColor>↑ Scrolled {scrollOffset} lines</Text>
         </Box>
       )}
     </Box>

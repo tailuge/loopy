@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { Banner } from './Banner.js';
 import { MessageList } from './MessageList.js';
@@ -7,10 +7,11 @@ import { LogPanel } from './LogPanel.js';
 import { handleCommand, type CommandContext } from '../commands/index.js';
 import { tools } from '../llm/client.js';
 import { logger } from '../llm/logger.js';
-import type { Message, LLMConfig } from '../llm/types.js';
+import type { Message, LLMConfig, StepContent } from '../llm/types.js';
 import { loadEnv, loadConfig } from '../config.js';
 import { Agent } from '../llm/agent.js';
 import { listModes, loadMode } from '../modes.js';
+import { useMouseTracking } from '../hooks/use-mouse-tracking.js';
 
 interface AppProps {
   initialProvider?: string;
@@ -37,6 +38,18 @@ export const App: React.FC<AppProps> = ({
   const [configLoaded, setConfigLoaded] = useState(false);
   const [mode, setMode] = useState('default');
   const [modes, setModes] = useState<string[]>([]);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [stepHistory, setStepHistory] = useState<StepContent[]>([]);
+  
+  const handleScrollUp = useCallback(() => {
+    setScrollOffset(prev => Math.min(prev + 1, 1000));
+  }, []);
+  
+  const handleScrollDown = useCallback(() => {
+    setScrollOffset(prev => Math.max(prev - 1, 0));
+  }, []);
+  
+  useMouseTracking({ onScrollUp: handleScrollUp, onScrollDown: handleScrollDown });
   
   // Load config on mount
   useEffect(() => {
@@ -156,6 +169,8 @@ export const App: React.FC<AppProps> = ({
     setStreamingModelId(undefined);
     setCurrentToolCall(null);
     setCurrentToolResult(null);
+    setScrollOffset(0);
+    setStepHistory([]);
 
     logger.info('User message', { content: result.content, provider, model });
 
@@ -165,6 +180,8 @@ export const App: React.FC<AppProps> = ({
     agent.setMessages(messages);
 
     let assistantText = '';
+    const currentStepHistory = useRef<StepContent[]>([]);
+    currentStepHistory.current = [];
 
     const onDelta = (delta: string) => {
       assistantText += delta;
@@ -180,9 +197,14 @@ export const App: React.FC<AppProps> = ({
       setCurrentToolResult({ toolName: name, result });
     };
 
+    const onStepContent = (stepNumber: number, content: StepContent) => {
+      currentStepHistory.current = [...currentStepHistory.current, content];
+      setStepHistory([...currentStepHistory.current]);
+    };
+
     const onFinish = (event: any) => {
       if (assistantText) {
-        setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId, steps: currentStepHistory.current }]);
       }
       setStreamingModelId(event.modelId);
       cleanup();
@@ -198,6 +220,7 @@ export const App: React.FC<AppProps> = ({
       agent.off('stream:delta', onDelta);
       agent.off('tool:call', onToolCall);
       agent.off('tool:result', onToolResult);
+      agent.off('step:content', onStepContent);
       agent.off('finish', onFinish);
       agent.off('error', onError);
       setIsLoading(false);
@@ -209,6 +232,7 @@ export const App: React.FC<AppProps> = ({
     agent.on('stream:delta', onDelta);
     agent.on('tool:call', onToolCall);
     agent.on('tool:result', onToolResult);
+    agent.on('step:content', onStepContent);
     agent.on('finish', onFinish);
     agent.on('error', onError);
 
@@ -236,6 +260,8 @@ export const App: React.FC<AppProps> = ({
           currentToolCall={currentToolCall}
           currentToolResult={currentToolResult}
           isLoading={isLoading}
+          scrollOffset={scrollOffset}
+          stepHistory={stepHistory}
         />
       </Box>
       

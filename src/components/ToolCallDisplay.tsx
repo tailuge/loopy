@@ -6,6 +6,7 @@ interface ToolCallDisplayProps {
   input?: unknown;
   result?: unknown;
   isComplete?: boolean;
+  compact?: boolean;
 }
 
 function truncateJSON(data: unknown, maxLength: number): string {
@@ -22,11 +23,24 @@ export const ToolCallDisplay: React.FC<ToolCallDisplayProps> = ({
   input,
   result,
   isComplete = false,
+  compact = false,
 }) => {
-  const inputStr = input ? truncateJSON(input, 50) : '';
-  const resultStr = result ? truncateJSON(result, 200) : '';
+  const inputStr = input ? truncateJSON(input, compact ? 30 : 50) : '';
+  const resultStr = result ? truncateJSON(result, compact ? 100 : 200) : '';
   const showInput = input !== undefined && inputStr.length > 0;
   const showResult = isComplete && result !== undefined && resultStr.length > 0;
+  
+  if (compact) {
+    return (
+      <Box marginBottom={1}>
+        <Text dimColor>[</Text>
+        <Text color="magenta" bold>{toolName}</Text>
+        {showInput && <Text dimColor> {inputStr.substring(0, 30)}{inputStr.length > 30 ? '...' : ''}</Text>}
+        {showResult && <Text dimColor> → {resultStr.substring(0, 50)}{resultStr.length > 50 ? '...' : ''}</Text>}
+        <Text dimColor>]</Text>
+      </Box>
+    );
+  }
   
   return (
     <Box flexDirection="column" marginBottom={1}>

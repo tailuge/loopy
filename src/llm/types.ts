@@ -1,7 +1,19 @@
+export interface ToolCallRecord {
+  toolName: string;
+  input: unknown;
+  result?: unknown;
+}
+
+export interface StepContent {
+  text: string;
+  toolCalls: ToolCallRecord[];
+}
+
 export type Message = {
   role: 'user' | 'assistant' | 'system';
   content: string;
   modelId?: string;
+  steps?: StepContent[];
 };
 
 export type ToolCallEvent = {
@@ -26,6 +38,12 @@ export type StepFinishEvent = {
   stepNumber: number;
 };
 
+export type StepContentEvent = {
+  type: 'step-content';
+  stepNumber: number;
+  content: StepContent;
+};
+
 export type FinishEvent = {
   type: 'finish';
   finishReason: string;
@@ -41,6 +59,7 @@ export type StreamEvent =
   | ToolCallEvent
   | ToolResultEvent
   | StepFinishEvent
+  | StepContentEvent
   | FinishEvent;
 
 // Use any for tools to avoid complex generic constraints with AI SDK
