@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { Banner } from './Banner.js';
 import { MessageList } from './MessageList.js';
@@ -180,8 +180,7 @@ export const App: React.FC<AppProps> = ({
     agent.setMessages(messages);
 
     let assistantText = '';
-    const currentStepHistory = useRef<StepContent[]>([]);
-    currentStepHistory.current = [];
+    let currentStepHistory: StepContent[] = [];
 
     const onDelta = (delta: string) => {
       assistantText += delta;
@@ -198,13 +197,13 @@ export const App: React.FC<AppProps> = ({
     };
 
     const onStepContent = (stepNumber: number, content: StepContent) => {
-      currentStepHistory.current = [...currentStepHistory.current, content];
-      setStepHistory([...currentStepHistory.current]);
+      currentStepHistory = [...currentStepHistory, content];
+      setStepHistory([...currentStepHistory]);
     };
 
     const onFinish = (event: any) => {
       if (assistantText) {
-        setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId, steps: currentStepHistory.current }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantText, modelId: event.modelId, steps: currentStepHistory }]);
       }
       setStreamingModelId(event.modelId);
       cleanup();
