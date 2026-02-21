@@ -5,9 +5,12 @@ import { promisify } from 'util';
 
 const execPromise = promisify(exec);
 
-export async function execCommand(command: string) {
+export async function execCommand(command: string, timeout = 30000) {
   try {
-    const { stdout, stderr } = await execPromise(command, { maxBuffer: 10 * 1024 * 1024 });
+    const { stdout, stderr } = await execPromise(command, {
+      maxBuffer: 10 * 1024 * 1024,
+      timeout
+    });
     return { stdout, stderr };
   } catch (error) {
     return {
@@ -20,7 +23,7 @@ export async function execCommand(command: string) {
 }
 
 export const shell = tool({
-  description: 'Run a shell command',
+  description: 'Run a shell command. The command will time out after 30 seconds.',
   inputSchema: z.object({
     command: z.string().describe('The command to run'),
   }),

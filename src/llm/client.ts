@@ -33,25 +33,30 @@ export async function* streamChat(
     let finishData: { finishReason: string; usage?: { inputTokens?: number; outputTokens?: number } } | null = null;
 
     for await (const part of streamResult.fullStream) {
-      if (part.type === 'text-delta') {
-        yield { type: 'text-delta', delta: part.text };
-      } else if (part.type === 'tool-call') {
-        const input = (part as { input?: unknown }).input;
-        logger.info('Tool call', { toolName: part.toolName, input });
-        yield { type: 'tool-call', toolName: part.toolName, input };
-      } else if (part.type === 'tool-result') {
-        const resultData = (part as { output?: unknown }).output;
-        logger.debug('Tool result', { toolName: part.toolName, result: resultData });
-        yield { type: 'tool-result', toolName: part.toolName, result: resultData };
-      } else if (part.type === 'finish') {
-        const finishPart = part as { finishReason: string; totalUsage?: { inputTokens?: number; outputTokens?: number } };
-        finishData = {
-          finishReason: finishPart.finishReason,
-          usage: {
-            inputTokens: finishPart.totalUsage?.inputTokens,
-            outputTokens: finishPart.totalUsage?.outputTokens,
-          },
-        };
+      switch (part.type) {
+        case 'text-delta':
+          yield { type: 'text-delta', delta: part.text };
+          break;
+
+        case 'tool-call':
+          logger.info('Tool call', { toolName: part.toolName, input: part.input });
+          yield { type: 'tool-call', toolName: part.toolName, input: part.input };
+          break;
+
+        case 'tool-result':
+          logger.debug('Tool result', { toolName: part.toolName, result: part.output });
+          yield { type: 'tool-result', toolName: part.toolName, result: part.output };
+          break;
+
+        case 'finish':
+          finishData = {
+            finishReason: part.finishReason,
+            usage: {
+              inputTokens: part.totalUsage?.inputTokens,
+              outputTokens: part.totalUsage?.outputTokens,
+            },
+          };
+          break;
       }
     }
 

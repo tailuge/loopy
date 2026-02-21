@@ -84,6 +84,7 @@ export class Agent extends EventEmitter {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.emit('error', error);
       logger.error('Agent error', { error: errorMessage });
+      throw error;
     }
   }
 
@@ -149,7 +150,9 @@ export class Agent extends EventEmitter {
   }
 
   /**
-   * Update system instructions and reset history.
+   * Update system instructions.
+   * Note: This will clear the current conversation history to ensure
+   * the new instructions are applied to a clean state.
    */
   setInstructions(text: string): void {
     this.instructions = text;
