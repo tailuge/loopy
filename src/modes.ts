@@ -39,7 +39,8 @@ export async function listModes(): Promise<string[]> {
  * Recursively process [[include:filename]] tags in mode files.
  */
 async function processIncludes(content: string, modesDir: string, seen = new Set<string>()): Promise<string> {
-  const includeRegex = /\[\[include:([^\]]+)\]\]/g;
+  // Matches [[include:filename]] with optional whitespace after colon
+  const includeRegex = /\[\[include:\s*([^\]]+)\]\]/g;
   const matches = Array.from(content.matchAll(includeRegex));
 
   if (matches.length === 0) return content;
@@ -51,7 +52,7 @@ async function processIncludes(content: string, modesDir: string, seen = new Set
     // Add text before the match
     parts.push(content.slice(lastIndex, match.index ?? lastIndex));
 
-    const includeName = match[1];
+    const includeName = match[1].trim();
     if (seen.has(includeName)) {
       parts.push(`[Error: Circular include detected for "${includeName}"]`);
     } else {

@@ -212,7 +212,9 @@ export const App: React.FC<AppProps> = ({
     agent.on('finish', onFinish);
     agent.on('error', onError);
 
-    agent.send(result.content);
+    agent.send(result.content).catch(() => {
+      // Errors are handled via the 'error' event listener
+    });
 
   }, [messages, config, provider, model, showLog, exit, agent, mode, modes]);
 
