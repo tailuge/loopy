@@ -24,16 +24,29 @@ export async function* streamChat(
   });
 
   try {
+    const stepFinishQueue: StreamEvent[] = [];
+    let stepNumber = 0;
+
     const streamResult = streamText({
       model,
       messages,
       tools: config.tools,
       stopWhen: stepCountIs(config.maxSteps),
+      onStepFinish: (stepResult) => {
+        stepFinishQueue.push({ 
+          type: 'step-finish', 
+          stepNumber: stepResult.stepNumber ?? stepNumber 
+        });
+        stepNumber++;
+      },
     });
 
     let finishData: { finishReason: string; usage?: { inputTokens?: number; outputTokens?: number } } | null = null;
 
     for await (const part of streamResult.fullStream) {
+      while (stepFinishQueue.length > 0) {
+        yield stepFinishQueue.shift()!;
+      }
       if (part.type === 'text-delta') {
         yield { type: 'text-delta', delta: part.text };
       } else if (part.type === 'tool-call') {
@@ -54,6 +67,10 @@ export async function* streamChat(
           },
         };
       }
+    }
+
+    while (stepFinishQueue.length > 0) {
+      yield stepFinishQueue.shift()!;
     }
 
     const resolved = await streamResult;
