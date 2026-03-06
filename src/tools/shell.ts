@@ -1,13 +1,28 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 
 const execPromise = promisify(exec);
+const execFilePromise = promisify(execFile);
 
 export async function execCommand(command: string) {
   try {
     const { stdout, stderr } = await execPromise(command, { maxBuffer: 10 * 1024 * 1024 });
+    return { stdout, stderr };
+  } catch (error) {
+    return {
+      error: `Failed to run command: ${error instanceof Error ? error.message : String(error)}`,
+      stdout: (error as any).stdout,
+      stderr: (error as any).stderr,
+      code: (error as any).code
+    };
+  }
+}
+
+export async function execFileCommand(file: string, args: string[]) {
+  try {
+    const { stdout, stderr } = await execFilePromise(file, args, { maxBuffer: 10 * 1024 * 1024 });
     return { stdout, stderr };
   } catch (error) {
     return {

@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { execCommand } from './shell.js';
+import { execFileCommand } from './shell.js';
 
 export const grep = tool({
   description: 'Search for a pattern in files within a directory using the system grep command',
@@ -10,18 +10,16 @@ export const grep = tool({
     recursive: z.boolean().describe('Whether to search recursively').default(true),
   }),
   execute: async ({ pattern, path, recursive }) => {
-    // Escape pattern and path for shell
-    const escapedPattern = pattern.replace(/"/g, '\\"');
-    const escapedPath = path.replace(/"/g, '\\"');
-
     // -r: recursive
     // -n: line number
     // -I: ignore binary files
     // -E: extended regex
-    const flags = recursive ? '-rnIE' : '-nIE';
-    const command = `grep ${flags} "${escapedPattern}" "${escapedPath}" | head -n 100`;
+    // --: stop parsing options (prevents option injection from pattern)
+    const args = recursive
+      ? ['-rnIE', '--', pattern, path]
+      : ['-nIE', '--', pattern, path];
 
-    const result = await execCommand(command);
+    const result = await execFileCommand('grep', args);
 
     // grep returns exit code 1 if no matches are found
     if ('error' in result && (result as any).code !== 1) {
@@ -32,7 +30,8 @@ export const grep = tool({
       return { results: [], message: 'No matches found.' };
     }
 
-    const lines = result.stdout.trim().split('\n');
+    // Limit to 100 lines in JS instead of shell pipe
+    const lines = result.stdout.trim().split('\n').slice(0, 100);
     const results = lines.map((line: string) => {
       // Grep output format is typically filename:linenumber:content
       // We use a regex to capture the first two parts correctly even if filename has colons
